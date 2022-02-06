@@ -1,0 +1,54 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: IAM Roles
+
+Parameters:
+  AppName:
+    Type: String
+    Description: Application name. Used to populate role descriptions.
+    Default: Druid
+  OutputName:
+    Type: String
+    Description: Application name. Used to populate role descriptions.
+  AdminS3Policy:
+    Type: String
+    Description: S3 Policy Name
+
+Resources:
+  Role:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: !Sub Custom Role ${AppName}
+      # PermissionsBoundary: !Sub arn:aws:iam::${AWS::AccountId}:policy/ais-permissions-boundaries
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - arn:aws:iam::aws:policy/AmazonEC2FullAccess
+        - arn:aws:iam::aws:policy/AmazonVPCFullAccess
+        - arn:aws:iam::aws:policy/AWSCloudFormationFullAccess
+        - !Ref AdminS3Policy
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                  - s3.amazonaws.com
+                  - ec2.amazonaws.com
+              AWS: # sets up proper links
+                  - arn:aws:iam::064710643867:root
+                  - arn:aws:iam::064710643867:user/william  # main account
+                  - arn:aws:iam::064710643867:user/admin  # limited access
+            Action:
+              - sts:AssumeRole
+
+  DruidInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref Role
+
+Outputs:
+  DruidInstanceProfile:
+    Description: The name of the instance profile containing the default instance role
+    Value: !Ref DruidInstanceProfile
+    Export:
+      Name: !Sub ${AWS::StackName}

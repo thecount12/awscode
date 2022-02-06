@@ -1,0 +1,106 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: IAM Roles
+
+Parameters:
+  OutputName:
+    Type: String
+    Description: Application name. Used to populate role descriptions.
+  AppName:
+    Type: String
+    Description: Application name. Used to populate role descriptions.
+    Default: Druid
+  KeyName:
+    Description: "Key Pair name"
+    Type: AWS::EC2::KeyPair::KeyName
+  MyVPCID:
+    Type: String
+    Default: vpc-0dbd4f4e307a3c2d8
+  PubSubnet:
+    Type: String
+    Default: subnet-057436db247afcec3
+
+Mappings:
+  RegionAMIMap:
+    us-east-1:
+      AmazonLinux: ami-1853ac65
+#    us-east-2:
+#      AmazonLinux: ami-25615740
+    us-east-2:
+      HVM64: ami-0892d3c7ee96c0bf7
+    us-west-1:
+      AmazonLinux: ami-bf5540df
+    us-west-2:
+      AmazonLinux: ami-d874e0a0
+    ap-south-1:
+      AmazonLinux: ami-7c87d913
+    ap-northeast-1:
+      AmazonLinux: ami-a77c30c1
+    ap-northeast-2:
+      AmazonLinux: ami-5e1ab730
+    ap-southeast-1:
+      AmazonLinux: ami-e2adf99e
+    ap-southeast-2:
+      AmazonLinux: ami-43874721
+    ca-central-1:
+      AmazonLinux: ami-5b55d23f
+    eu-central-1:
+      AmazonLinux: ami-ac442ac3
+    eu-west-1:
+      AmazonLinux: ami-3bfab942
+    eu-west-2:
+      AmazonLinux: ami-dff017b8
+    eu-west-3:
+      AmazonLinux: ami-4f55e332
+    sa-east-1:
+      AmazonLinux: ami-5339733f
+
+Resources:
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      # ImageId: !FindInMap [ RegionAMIMap, !Ref 'AWS::Region', AmazonLinux ]
+      # ImageId: !FindInMap [ RegionAMIMap, !Ref 'AWS::Region', HVM64 ]
+      ImageId: ami-0892d3c7ee96c0bf7
+      InstanceType: t3.small
+      SubnetId: !Ref PubSubnet
+      Tags:
+        - Key: Name
+          Value: cpuauthserver
+      UserData:
+        'Fn::Base64':
+          !Sub |
+          #!/bin/bash
+          sudo apt-get update -y
+          sudo apt-get install qemu-kvm -y
+      KeyName: !Ref KeyName
+      SecurityGroupIds:
+        - !Ref SecurityGroup
+
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: allow ssh and http
+      VpcId: !Ref MyVPCID
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          FromPort: 22
+          IpProtocol: 'tcp'
+          ToPort: 22
+        - CidrIp: 0.0.0.0/0
+          FromPort: 80
+          IpProtocol: 'tcp'
+          ToPort: 80
+        - CidrIp: 0.0.0.0/0
+          FromPort: 17019
+          IpProtocol: 'tcp'
+          ToPort: 17019
+        - CidrIp: 0.0.0.0/0
+          FromPort: 567
+          IpProtocol: 'tcp'
+          ToPort: 567
+
+
+Outputs:
+  WebServerURL:
+    Value: !Join ["", ["http://", !GetAtt EC2Instance.PublicDnsName, ":80"]]
+    Description: URL for the apache web server

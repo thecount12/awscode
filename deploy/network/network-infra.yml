@@ -1,0 +1,86 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Network Template settings
+
+Parameters:
+  OutputName:
+    Type: String
+    Description: Application name. Used to populate role descriptions.
+  VpcName:
+    Description: "Enter name of VPC"
+    Type: String
+  VpcCidr:
+    Description: "Enter CIDR block for VPC.  Ex. 10.0.0.0/16"
+    Type: String
+    Default: 172.31.0.0/20
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+#  AZ:
+#    Description: "Choose the Availability zone"
+#    Type: AWS::EC2::AvailabilityZone::Name
+  PubSubnetCidr:
+    Description: "Enter CIDR Block for Subnet.  Ex. 10.0.1.0/24"
+    Type: String
+    Default:  172.31.1.0/24
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+
+
+Resources:
+  MyVPC:
+    Description: Name of new VPC
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      EnableDnsSupport: 'true'
+      EnableDnsHostnames: 'true'
+      Tags:
+        - Key: Name
+          Value: !Ref VpcName
+
+  PubSubnet:
+    Description: Public Subnet
+    Type: AWS::EC2::Subnet
+    Properties:
+     CidrBlock: !Ref PubSubnetCidr
+     # AvailabilityZone: !Ref AZ  # hard code us-west-2a,b,c
+     # AvailabilityZone: !Select [ 0, !GetAZs ]    # Get the first AZ in the list
+     AvailabilityZone: !Select
+       - 0
+       - !GetAZs
+         Ref: 'AWS::Region'
+     MapPublicIpOnLaunch: true
+     VpcId: !Ref MyVPC
+     Tags:
+       - Key: Name
+         Value: !Join
+           - '_'
+           - - !Ref MyVPC
+             - "Public_Subnet"
+
+  PubRoute:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref MyVPC
+      Tags:
+        - Key: Name
+          Value: Public Route Table
+
+  PubSubnetAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PubSubnet
+      RouteTableId: !Ref PubRoute
+
+  IGW:
+    Type: AWS::EC2::InternetGateway
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref MyVPC
+      InternetGatewayId: !Ref IGW
+  DefaultRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PubRoute
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref IGW

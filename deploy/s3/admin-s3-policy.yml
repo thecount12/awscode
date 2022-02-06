@@ -1,0 +1,40 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: IAM Druid Glue Policy
+
+Parameters:
+  OutputName:
+    Type: String
+    Description: Application name. Used to populate role descriptions.
+
+Resources:
+  Policy:
+      Type: 'AWS::IAM::ManagedPolicy'
+      Properties:
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Sid: VisualEditor1
+              Effect: Allow
+              Action:
+                - s3:PutObject
+                - s3:GetObject
+                - s3:AbortMultipartUpload
+                - s3:ListMultipartUploadParts
+                - s3:ListBucket
+              Resource:
+                - arn:aws:s3:::rapidpython
+                - arn:aws:s3:::rapidpython/*
+                - arn:aws:s3:::thinktank1
+                - arn:aws:s3:::thinktank1/*
+            - Sid: VisualEditor2
+              Effect: Allow
+              Action:
+                - iam:ListPolicies
+              Resource:
+                - '*'
+
+Outputs:
+  ExportPolicy:
+    Value: !Ref Policy
+    Export:
+      Name: !Sub ${OutputName}
